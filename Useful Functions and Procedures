@@ -1,0 +1,295 @@
+'-------------------------------------------------------------------------------
+'-----------FUNCTIONS
+'-------------------------------------------------------------------------------
+
+'ACCESS A RANGE VIA A1 NOTATION - TO SIMULATE EXCEL VBA's Sheets("Sheet1").Range("A1")
+Function Range(cellRange As String, Optional sheetName As String)
+	'EX:  Range("A1:B10", "Sheet1")
+	'YOU CAN THEN ACCESS ITS PROPERTIES/METHODS. 
+	'EX:  Range("A1:B10", "Sheet1").Value
+
+	'If no sheetname is given, then use the active sheet, otherwise use the given sheetname
+	If ( IsMissing(sheetName)) Then
+		Range = ThisComponent.CurrentController.ActiveSheet.getCellRangeByName(cellRange)
+	Else
+		Range = ThisComponent.sheets.getByName(sheetName).getCellRangeByName(cellRange)
+	End If
+End Function
+
+'ACCESS A SHEET BY NAME OR INDEX - TO SIMULATE EXCEL VBA'a Sheets("Sheet1")
+Function Sheets(sheetName As Variant)
+	'EX: Sheets("Sheet1")
+	'YOU CAN THEN ACCESS ITS PROPERTIES/METHODS. 
+	'EX: Sheets("Sheet1").IsActive
+	
+	'Check if sheet index or sheet name was given, then access it
+	If ( IsNumeric(sheetName) ) Then
+		Sheets = ThisComponent.sheets.getByIndex(sheetName)
+	Else
+		Sheets = ThisComponent.sheets.getByName(sheetName)
+	End If
+End Function
+
+'ACCESS A COLUMN BY ITS COLUMN NAME or INDEX - TO SIMULATE EXCEL VBA's Sheets("Sheet1").Columns("A")
+Function Columns(colName As Variant, Optional sheetName As String) As Object
+	'EX: Columns("A", "Sheet1")
+	'YOU CAN THEN ACCESS ITS PROPERTIES/METHODS
+	'EX: Columns("A", "Sheet1").Width
+	
+	'If no sheetname is given, then use the active sheet, otherwise use the given sheetname
+	If ( IsMIssing(sheetName) ) Then
+			'Check if column index or sheet name was given, then access it
+			If ( IsNumeric(colName) ) Then
+				Columns = ThisComponent.CurrentController.ActiveSheet.Columns.getByIndex(colName)
+			Else
+				Columns = ThisComponent.CurrentController.ActiveSheet.Columns.getByName(colName)
+			End If
+	Else
+			'Check if column index or sheet name was given, then access it
+				If ( IsNumeric(colName) ) Then
+					Columns = ThisComponent.CurrentController.ActiveSheet.Columns.getByName(colName)
+				Else
+					Columns = ThisComponent.getSheets.getByName( sheetName ).Columns.getByName(colName)
+				End If
+	End If
+End Function
+
+'GET THE LAST NON-BLANK ROW NUMBER IN A GIVEN COLUMN
+Function lastRow (colName As String, Optional sheetName As String) as long
+		'EX: lastRow("A", "Sheet1")
+		'This function -1 if the whole column is empty
+
+			 
+			 Dim oColumn As Object
+			 
+			 '------- Sheet and Column -------
+			'If no sheetname is given, then use the active sheet, otherwise use the given sheetname
+			If ( IsMissing(sheetName) ) Then
+				oColumn = ThisComponent.CurrentController.ActiveSheet.Columns.getByName(colName)
+				
+				'OR IF YOU ALSO HAVE THE CUSTOM FUNCTION "Columns" ABOVE, THEN SIMPLY
+				'oColumn = Columns(colName)	
+			Else
+				oColumn = ThisComponent.getSheets.getByName( sheetName ).Columns.getByName(colName)
+				
+				'OR IF YOU ALSO HAVE THE CUSTOM FUNCTION "Columns" ABOVE, THEN SIMPLY
+				'oColumn = Column(colName, sheetName)
+			End If
+	
+			Dim oFinder As Object, oResult As Object
+			
+			'----------Create Search Parameters------------------
+				oFinder = oColumn.createSearchDescriptor
+				oFinder.searchRegularExpression = TRUE
+				oFinder.SearchString = "."
+
+			 oResult = oColumn.FindAll(oFinder)
+			
+			 Dim ResultName As String, PartsOfTheName As Object
+			 
+			 '------- Row Index -------
+			 If Not IsNull(oResult) then
+					ResultName = oResult.AbsoluteName
+					PartsOfTheName = Split(ResultName,"$")
+					LastRow = Val( PartsOfTheName( ubound(PartsOfTheName) ) )
+			 Else
+					LastRow = - 1
+			 End If   
+End Function
+
+'CHECK IF THE GIVEN STRING IS AN EMAIL ADDRESS FORMAT
+Function isEmail(checkString As String)
+	Dim oTextSearch As Object, oOptions As Object, _
+		oFound As Object, emailPattern As String
+	
+	emailPattern = "[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-z]{2,6}" 
+	
+	' Prepare regexp search options
+	oTextSearch = CreateUnoService("com.sun.star.util.TextSearch")
+	oOptions = CreateUnoStruct("com.sun.star.util.SearchOptions")
+	
+	oOptions.algorithmType = com.sun.star.util.SearchAlgorithms.REGEXP	
+	oOptions.searchString = emailPattern
+	oTextSearch.setOptions(oOptions)
+	
+	' search first substring
+	oFound = oTextSearch.searchForward(checkString, 0, Len(checkString))
+	
+	If ( oFound.subRegExpressions=0 ) Then
+	  isEmail = FALSE
+	  Exit Function
+	Else
+	  isEmail = TRUE
+	End If
+End Function
+
+'CHECK THE GIVEN STRING WITH A REGULAR EXPRESSION
+Function regEx(checkString As String, regexString As String)
+		'EX: myString = "This is my String to check with Regex"
+		'		 myRegexString = "[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-z]{2,6}"
+				 
+		'			If ( regEx(mystring), myRegexString ) Then...
+		
+	Dim oTextSearch As Object, oOptions As Object, _
+		oFound As Object, emailPattern As String
+		
+	' Prepare regexp search options
+	oTextSearch = CreateUnoService("com.sun.star.util.TextSearch")
+	oOptions = CreateUnoStruct("com.sun.star.util.SearchOptions")
+	
+	oOptions.algorithmType = com.sun.star.util.SearchAlgorithms.REGEXP	
+	oOptions.searchString = emailPattern
+	oTextSearch.setOptions(oOptions)
+	
+	' search first substring
+	oFound = oTextSearch.searchForward(checkString, 0, Len(checkString))
+	
+	If ( oFound.subRegExpressions=0 ) Then
+	  isEmail = FALSE
+	  Exit Function
+	Else
+	  isEmail = TRUE
+	End If
+End Function
+
+'-------------------------------------------------------------------------------
+'-----------SUB PROCEDURES
+'-------------------------------------------------------------------------------
+
+'SET FOCUS TO A SHEET OR A CELL IN IT - TO SIMULATE EXCEL VBA's Sheets("Sheet1").Activate or Range("A1").Activate
+Sub Activate(sheetName As String, Optional cellRange As String)
+		'EX: Activate("Sheet1", "A1")
+
+		'Check if a cell range name was given then set focus to it, otherwise set focus to the sheet
+		If ( NOT IsMissing(cellRange) ) Then
+				Dim myRange As Object
+				myRange = ThisComponent.sheets.getByName(sheetName).getCellRangeByName(cellRange)
+
+				ThisComponent.CurrentController.select( myRange )
+				
+				'OR IF YOU ALSO HAVE THE CUSTOM FUNCTION "Range" ABOVE, THEN SIMPLY
+				'ThisComponent.CurrentController.select( Range(cellRange, sheetName) )
+		Else
+				Dim mySheet As Object
+				mySheet = ThisComponent.sheets.getByName(sheetName)
+				ThisComponent.CurrentController.setActiveSheet( mySheet )
+				
+				'OR IF YOU ALSO HAVE THE CUSTOM FUNCTION "Sheets" ABOVE, THEN SIMPLY
+				'ThisComponent.CurrentController.setActiveSheet( Sheets(sheetName) )
+		End If
+End Sub
+
+'COPY CONTENTS OF SELECTED CELL RANGE TO WINDOWS CLIPBOARD - TO SIMULATE EXCEL VBA's Range("A1").Copy
+Sub copyToClip()
+	'This macro is taken from a macro recording of right-clik>Copy action
+	'EX:  Range("A1").copyToClip()
+	
+	Dim document   as Object
+	Dim dispatcher as Object
+	
+	'Get access to the document frame and setup dispatcher services
+	document   = ThisComponent.CurrentController.Frame
+	dispatcher = createUnoService("com.sun.star.frame.DispatchHelper")
+	
+	'Execute Copy Dispatcher
+	dispatcher.executeDispatch(document, ".uno:Copy", "", 0, Array())
+End Sub
+
+'REMOVE DUPLICATES FOR A GIVEN CELLRANGE AND COPY THE RESULTS TO A NEW CELL RANGE
+Sub removeDuplicates(cellRange As Object, destCell As Object)
+		'EX: Dim mySourceRange As Object, myNewCell As Object
+		'		 mySourceRange = Range("A1:B50", "Sheet1") <- This needs the custom function "Range" above.
+		'		 myNewCell = Range("A1", "Sheet2")
+		'
+		'		 removeDuplicates(mySourceRange, myNewCell) <- One being the second column in mySourceRange
+		'
+		'		 OR SIMPLY:
+		'		 removeDuplicates( Range("A1:B50", "Sheet1"), Range("A1", "Sheet2") )
+		
+		Dim filterOpts As Object
+				filterOpts = cellRange.createFilterDescriptor(TRUE)
+				filterOpts.ContainsHeader = TRUE
+				filterOpts.SkipDuplicates = TRUE
+		
+		Dim oOut As New com.sun.star.table.CellAddress
+				oOut.Sheet = destCell.RangeAddress.Sheet 
+				oOut.Column = destCell.RangeAddress.StartColumn
+				oOut.Row = destCell.RangeAddress.StartRow
+		
+				filterOpts.CopyOutputData = TRUE
+				filterOpts.SaveOutputPosition = FALSE
+				filterOpts.OutputPosition = oOut
+		
+		'Apply Filter Options and Execute
+		cellRange.Filter(filterOpts)
+		
+		'OPTIONAL : Delete the source range
+		'cellRange.clearContents(4) '4 parameter deletes strings, 1 deletes number values, 2 deletes datetime, 16 deletes formulas
+End Sub
+
+'USE A STANDARD FILTER FOR THE GIVEN RANGE > TO SIMULATE CALC'S Data Menu>More Filters>Standard Filter
+Sub standardFilter(cellRange As Object, filterCol As Long, filterString As String, regexOption As String, duplicateOption As String _
+										copyResults As String, destCell As Object, deleteSource As String)
+		'EX: 
+		' standardFilter( Range("A1:B50", "Sheet1"), 2, "SAMPLE TEXT FILTER", "use regex", "skip duplicates", _
+		'									"copy", Range("A1", "Sheet2"), "delete source" )
+		
+		'Set the Paramaters
+		Dim filterField As Long, filterString As String, +
+				useRegex As Boolean, skipDuplicates As Boolean, makeNewCopy As Boolean, destCell As Object
+				
+				filterField = filterCol - 1
+				
+				If ( regexOption = "use regex" ) Then
+						useRegex = TRUE
+				Else
+						useRegex = FALSE
+				End If
+				
+				If ( duplicateOption = "skip duplicates" ) Then
+						skipDuplicates = TRUE
+				Else
+						skiDuplicates = FALSE
+				End If
+				
+				If ( copyResults = "copy" ) Then
+						makeNewCopy = TRUE
+				Else
+						makeNewCopy = FALSE
+				End If
+				
+		Dim filterOpts As Object
+				filterOpts = cellRange.createFilterDescriptor(TRUE)
+		
+		
+		Dim filterFields(0) As New com.sun.star.sheet.TableFilterField
+				With filterFields(0)
+					.Field = filterField
+					.IsNumeric = FALSE
+					.Operator = com.sun.star.sheet.FilterOperator.EQUAL
+					.StringValue = filterString
+			End With
+		
+		filterOpts.setFilterFields(filterFields)
+
+		filterOpts.ContainsHeader = TRUE
+		filterOpts.SkipDuplicates = skipDuplicates
+		
+		Dim oOut As New com.sun.star.table.CellAddress
+			oOut.Sheet = destCell.RangeAddress.Sheet 
+			oOut.Column = destCell.RangeAddress.StartColumn
+			oOut.Row = destCell.RangeAddress.StartRow
+		
+		filterOpts.CopyOutputData = makeNewCopy
+		filterOpts.SaveOutputPosition = FALSE
+		filterOpts.OutputPosition = oOut
+		
+		'Apply Filter Options and Execute
+		cellRange.Filter(filterOpts)
+		
+		
+				If ( deleteSource = "delete source" ) Then
+						cellRange.clearContents(4)	'4 parameter deletes strings, 1 deletes number values, 2 deletes datetime, 16 deletes formulas
+				End If
+End Sub
+
